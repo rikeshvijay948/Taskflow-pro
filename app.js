@@ -174,6 +174,20 @@
           gain.gain.exponentialRampToValueAtTime(0.01, now + 0.18);
           osc.start(now);
           osc.stop(now + 0.18);
+        } else if (type === 'bell' || type === 'timer') {
+          // Harmonic chime alert
+          [523.25, 659.25, 783.99].forEach((freq, idx) => {
+            const subOsc = this.ctx.createOscillator();
+            const subGain = this.ctx.createGain();
+            subOsc.type = 'sine';
+            subOsc.frequency.setValueAtTime(freq, now + idx * 0.12);
+            subGain.gain.setValueAtTime(0.2, now + idx * 0.12);
+            subGain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.12 + 0.38);
+            subOsc.connect(subGain);
+            subGain.connect(this.ctx.destination);
+            subOsc.start(now + idx * 0.12);
+            subOsc.stop(now + idx * 0.12 + 0.4);
+          });
         }
       } catch (err) {
         // Ignore audio errors silently
@@ -1599,6 +1613,235 @@
   };
 
   // --------------------------------------------------------------------------
+  // 10b. Pomodoro Focus Timer Engine
+  // --------------------------------------------------------------------------
+  const STORAGE_KEY_POMODORO = 'taskflow_pomodoro_v2';
+
+  const FocusTimer = {
+    duration: 25 * 60,
+    timeLeft: 25 * 60,
+    mode: 'focus', // 'focus' | 'shortBreak' | 'longBreak'
+    isRunning: false,
+    timerId: null,
+    sessionsToday: 0,
+    totalMinutesFocused: 0,
+
+    init() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY_POMODORO) || '{}');
+        const todayStr = new Date().toISOString().split('T')[0];
+        if (saved.date === todayStr) {
+          this.sessionsToday = saved.sessionsToday || 0;
+          this.totalMinutesFocused = saved.totalMinutesFocused || 0;
+        } else {
+          this.sessionsToday = 0;
+          this.totalMinutesFocused = 0;
+        }
+      } catch (e) {
+        this.sessionsToday = 0;
+        this.totalMinutesFocused = 0;
+      }
+      this.updateUI();
+    },
+
+    saveStats() {
+      try {
+        const todayStr = new Date().toISOString().split('T')[0];
+        localStorage.setItem(STORAGE_KEY_POMODORO, JSON.stringify({
+          date: todayStr,
+          sessionsToday: this.sessionsToday,
+          totalMinutesFocused: this.totalMinutesFocused
+        }));
+      } catch (e) {}
+    },
+
+    setMode(mode) {
+      this.pause();
+      this.mode = mode;
+      if (mode === 'focus') {
+        this.duration = 25 * 60;
+      } else if (mode === 'shortBreak') {
+        this.duration = 5 * 60;
+      } else if (mode === 'longBreak') {
+        this.duration = 15 * 60;
+      }
+      this.timeLeft = this.duration;
+
+      document.querySelectorAll('.focus-mode-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.focusMode === mode);
+      });
+
+      const statusEl = document.getElementById('focusTimerStatus');
+      if (statusEl) {
+        statusEl.textContent = mode === 'focus' ? 'Ready to focus' : (mode === 'shortBreak' ? 'Short break time' : 'Long break time');
+      }
+
+      this.updateUI();
+    },
+
+    toggle() {
+      if (this.isRunning) {
+        this.pause();
+      } else {
+        this.start();
+      }
+    },
+
+    start() {
+      if (this.isRunning) return;
+      this.isRunning = true;
+      SoundFX.play('add');
+
+      const startBtnText = document.getElementById('focusStartBtnText');
+      const startIcon = document.getElementById('focusStartIcon');
+      const toggleBtn = document.getElementById('focusTimerToggleBtn');
+
+      if (startBtnText) startBtnText.textContent = 'Pause';
+      if (startIcon) startIcon.innerHTML = '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>';
+      if (toggleBtn) toggleBtn.classList.add('running');
+
+      const statusEl = document.getElementById('focusTimerStatus');
+      if (statusEl) {
+        statusEl.textContent = this.mode === 'focus' ? '🔥 Focusing...' : '☕ Recharging...';
+      }
+
+      this.timerId = setInterval(() => this.tick(), 1000);
+      this.updateUI();
+    },
+
+    pause() {
+      this.isRunning = false;
+      if (this.timerId) {
+        clearInterval(this.timerId);
+        this.timerId = null;
+      }
+
+      const startBtnText = document.getElementById('focusStartBtnText');
+      const startIcon = document.getElementById('focusStartIcon');
+      const toggleBtn = document.getElementById('focusTimerToggleBtn');
+
+      if (startBtnText) startBtnText.textContent = 'Resume';
+      if (startIcon) startIcon.innerHTML = '<polygon points="5 3 19 12 5 21 5 3"/>';
+      if (toggleBtn) toggleBtn.classList.remove('running');
+
+      const statusEl = document.getElementById('focusTimerStatus');
+      if (statusEl) {
+        statusEl.textContent = 'Paused';
+      }
+
+      this.updateUI();
+    },
+
+    reset() {
+      this.pause();
+      this.timeLeft = this.duration;
+      const startBtnText = document.getElementById('focusStartBtnText');
+      if (startBtnText) startBtnText.textContent = this.mode === 'focus' ? 'Start Focus' : 'Start Break';
+      const statusEl = document.getElementById('focusTimerStatus');
+      if (statusEl) {
+        statusEl.textContent = this.mode === 'focus' ? 'Ready to focus' : 'Ready for break';
+      }
+      this.updateUI();
+    },
+
+    tick() {
+      if (this.timeLeft > 0) {
+        this.timeLeft--;
+        if (this.mode === 'focus' && this.timeLeft % 60 === 0) {
+          this.totalMinutesFocused++;
+          this.saveStats();
+        }
+        this.updateUI();
+      } else {
+        this.completeSession();
+      }
+    },
+
+    completeSession() {
+      this.pause();
+      SoundFX.play('bell');
+      ConfettiEngine.burst();
+
+      if (this.mode === 'focus') {
+        this.sessionsToday++;
+        this.totalMinutesFocused += Math.round(this.duration / 60);
+        this.saveStats();
+
+        const taskSelect = document.getElementById('focusTaskSelect');
+        const selectedTaskId = taskSelect ? taskSelect.value : null;
+        if (selectedTaskId) {
+          const task = state.tasks.find(t => t.id === selectedTaskId);
+          if (task) {
+            UI.showToast(`🎯 Focus session finished for "${task.title.slice(0, 20)}"!`, 'success');
+          }
+        } else {
+          UI.showToast('🎉 Focus session complete! Time for a break.', 'success');
+        }
+
+        if (this.sessionsToday % 4 === 0) {
+          this.setMode('longBreak');
+        } else {
+          this.setMode('shortBreak');
+        }
+      } else {
+        UI.showToast('☕ Break over! Time to get back in the flow.', 'info');
+        this.setMode('focus');
+      }
+    },
+
+    updateUI() {
+      const minutes = Math.floor(this.timeLeft / 60);
+      const seconds = this.timeLeft % 60;
+      const timeStr = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+      const clockEl = document.getElementById('focusTimerClock');
+      if (clockEl) clockEl.textContent = timeStr;
+
+      const headerPill = document.getElementById('focusHeaderPill');
+      if (headerPill) {
+        headerPill.textContent = timeStr;
+        headerPill.style.display = this.isRunning ? 'inline' : 'none';
+      }
+
+      const progressFill = document.getElementById('focusProgressFill');
+      if (progressFill && this.duration > 0) {
+        const pct = Math.max(0, Math.min(100, (this.timeLeft / this.duration) * 100));
+        progressFill.style.width = `${pct}%`;
+      }
+
+      const sessionsEl = document.getElementById('focusSessionsCount');
+      if (sessionsEl) sessionsEl.textContent = this.sessionsToday;
+
+      const minutesEl = document.getElementById('focusMinutesCount');
+      if (minutesEl) minutesEl.textContent = this.totalMinutesFocused;
+
+      if (this.isRunning) {
+        document.title = `(${timeStr}) Taskflow • Dynamic Productivity`;
+      } else {
+        document.title = 'Taskflow • Dynamic Productivity & To-Do Suite';
+      }
+    },
+
+    openModal() {
+      const taskSelect = document.getElementById('focusTaskSelect');
+      if (taskSelect) {
+        const currVal = taskSelect.value;
+        taskSelect.innerHTML = '<option value="">-- General Focus Session --</option>';
+        state.tasks.filter(t => !t.completed).forEach(t => {
+          const opt = document.createElement('option');
+          opt.value = t.id;
+          opt.textContent = `${t.priority === 'urgent' ? '🔴' : t.priority === 'high' ? '🟠' : '🔵'} ${t.title}`;
+          taskSelect.appendChild(opt);
+        });
+        if (currVal) taskSelect.value = currVal;
+      }
+      this.updateUI();
+      const modal = document.getElementById('focusModal');
+      if (modal) modal.classList.add('active');
+    }
+  };
+
+  // --------------------------------------------------------------------------
   // 11. Helper Utilities
   // --------------------------------------------------------------------------
   function highlightMatch(text, query) {
@@ -1792,6 +2035,22 @@
 
     const shortcutsBtn = document.getElementById('shortcutsBtn');
     if (shortcutsBtn) shortcutsBtn.onclick = () => document.getElementById('shortcutsModal').classList.add('active');
+
+    // 4b. Pomodoro Focus Timer Controls
+    const focusBtn = document.getElementById('focusTimerToggleBtn');
+    if (focusBtn) focusBtn.onclick = () => FocusTimer.openModal();
+
+    const focusStart = document.getElementById('focusStartBtn');
+    if (focusStart) focusStart.onclick = () => FocusTimer.toggle();
+
+    const focusReset = document.getElementById('focusResetBtn');
+    if (focusReset) focusReset.onclick = () => FocusTimer.reset();
+
+    document.querySelectorAll('.focus-mode-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        FocusTimer.setMode(btn.dataset.focusMode);
+      });
+    });
 
     // 5. Modal Closers (Data attribute delegate)
     document.addEventListener('click', (e) => {
@@ -1995,6 +2254,9 @@
       } else if ((e.key === 'n' || e.key === 'N') && !inInput) {
         e.preventDefault();
         UI.openTaskModal();
+      } else if ((e.key === 'f' || e.key === 'F') && !inInput) {
+        e.preventDefault();
+        FocusTimer.openModal();
       } else if (e.key === 'Escape') {
         document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
         if (searchInput && document.activeElement === searchInput) {
@@ -2026,6 +2288,7 @@
   function init() {
     Store.load();
     ConfettiEngine.init();
+    FocusTimer.init();
     AppRenderer.populateCategoryDropdowns();
     AppRenderer.renderSidebarCategories();
     AppRenderer.updateSidebarCounts();

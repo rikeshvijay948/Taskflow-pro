@@ -141,6 +141,14 @@
         </div>
 
         <div class="header-right">
+          <button class="icon-btn focus-timer-toggle-btn" id="focusTimerToggleBtn" title="Focus Pomodoro Timer (F)" aria-label="Focus Pomodoro Timer">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+            <span id="focusHeaderPill" style="display: none; font-size: 0.76rem; font-weight: 700; font-family: var(--font-mono); color: var(--accent-primary); margin-left: 2px;">25:00</span>
+          </button>
+
           <button class="btn-primary" id="openNewTaskModalBtn">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             <span>New Task</span>
@@ -415,8 +423,74 @@
           <div>Close Modals / Clear Search</div>
           <kbd style="padding: 2px 8px; background: var(--bg-surface-hover); border: 1px solid var(--border-color); border-radius: 4px; font-family: var(--font-mono);">Esc</kbd>
 
+          <div>Toggle Focus Pomodoro</div>
+          <kbd style="padding: 2px 8px; background: var(--bg-surface-hover); border: 1px solid var(--border-color); border-radius: 4px; font-family: var(--font-mono);">F</kbd>
+
           <div>Undo Last Action</div>
           <kbd style="padding: 2px 8px; background: var(--bg-surface-hover); border: 1px solid var(--border-color); border-radius: 4px; font-family: var(--font-mono);">Ctrl + Z</kbd>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. Pomodoro Focus Timer Modal -->
+  <div class="modal-overlay" id="focusModal">
+    <div class="modal-card" style="max-width: 480px;">
+      <div class="modal-header">
+        <h2 class="modal-title" style="display: flex; align-items: center; gap: 8px;">
+          <span>⏱️ Pomodoro Focus Timer</span>
+        </h2>
+        <button class="icon-btn btn-modal-close" data-close-modal="focusModal">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body" style="gap: 20px; align-items: center;">
+        <!-- Mode switcher pills -->
+        <div class="focus-mode-switcher">
+          <button type="button" class="focus-mode-btn active" data-focus-mode="focus">Focus (25m)</button>
+          <button type="button" class="focus-mode-btn" data-focus-mode="shortBreak">Short Break (5m)</button>
+          <button type="button" class="focus-mode-btn" data-focus-mode="longBreak">Long Break (15m)</button>
+        </div>
+
+        <!-- Big Timer Display Card -->
+        <div class="focus-timer-clock-container">
+          <div class="focus-timer-clock" id="focusTimerClock">25:00</div>
+          <div class="focus-timer-status" id="focusTimerStatus">Ready to focus</div>
+          <div class="focus-progress-track">
+            <div class="focus-progress-fill" id="focusProgressFill" style="width: 100%;"></div>
+          </div>
+        </div>
+
+        <!-- Task Link Select -->
+        <div class="form-group" style="width: 100%; text-align: left;">
+          <label class="form-label" for="focusTaskSelect">Link Active Task (optional):</label>
+          <select id="focusTaskSelect" class="form-select">
+            <option value="">-- General Focus Session --</option>
+          </select>
+        </div>
+
+        <!-- Controls -->
+        <div class="focus-timer-controls">
+          <button type="button" class="btn-primary" id="focusStartBtn" style="padding: 10px 24px; font-size: 0.95rem; border-radius: var(--radius-full);">
+            <svg id="focusStartIcon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            <span id="focusStartBtnText">Start Focus</span>
+          </button>
+          <button type="button" class="btn-secondary" id="focusResetBtn" style="padding: 10px 18px; border-radius: var(--radius-full);">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            <span>Reset</span>
+          </button>
+        </div>
+
+        <!-- Stats Row -->
+        <div class="focus-stats-row">
+          <div class="focus-stat-pill">
+            <span class="focus-stat-val" id="focusSessionsCount">0</span>
+            <span class="focus-stat-lbl">🍅 Sessions</span>
+          </div>
+          <div class="focus-stat-pill">
+            <span class="focus-stat-val" id="focusMinutesCount">0</span>
+            <span class="focus-stat-lbl">⏱️ Minutes Focused</span>
+          </div>
         </div>
       </div>
     </div>
