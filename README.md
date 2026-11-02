@@ -29,7 +29,9 @@ A responsive, feature-rich task and productivity management suite built with pur
 
 - **Smart Organization & Natural Language Parsing**:
   - Smart Quick-Add bar that parses commands like `Team retrospective tomorrow #work !urgent`.
-  - Color-coded project categories.
+  - Dynamic Tags Cloud in sidebar with automatic frequency calculation and 1-click multi-tag filtering.
+  - Interactive card tags with 1-click filter toggling and active state styling.
+  - Color-coded project categories with real-time counters.
   - Real-time search with keyword highlighting.
   - Multi-criteria sorting (Due Date, Priority, Title, Manual Order).
 

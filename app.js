@@ -109,6 +109,7 @@
     tasks: [],
     categories: [],
     activeFilter: 'all', // 'all' | 'today' | 'tomorrow' | 'upcoming' | 'overdue' | 'starred' | 'completed' | categoryId
+    activeTag: null,
     activeView: 'list', // 'list' | 'kanban' | 'calendar' | 'matrix' | 'analytics'
     searchQuery: '',
     sortBy: 'custom',
@@ -325,6 +326,7 @@
       }
       AppRenderer.updateSidebarCounts();
       AppRenderer.updateProductivityWidget();
+      AppRenderer.renderSidebarTags();
     },
 
     pushUndoSnapshot() {
@@ -519,6 +521,11 @@
       result = result.filter(t => t.priority === state.priorityFilter);
     }
 
+    // 2b. Tag Cloud Filter
+    if (state.activeTag) {
+      result = result.filter(t => (t.tags || []).some(tg => tg.toLowerCase() === state.activeTag.toLowerCase()));
+    }
+
     // 3. Search Query Filter
     if (state.searchQuery.trim()) {
       const q = state.searchQuery.toLowerCase().trim();
@@ -604,6 +611,9 @@
       };
 
       let title = filterNames[state.activeFilter] || getCategoryName(state.activeFilter);
+      if (state.activeTag) {
+        title += ` • #${state.activeTag}`;
+      }
       if (state.activeView === 'analytics') title = 'Productivity & Analytics';
       if (state.activeView === 'calendar') title = 'Calendar Schedule';
       if (state.activeView === 'matrix') title = 'Eisenhower Priority Matrix';
@@ -683,6 +693,46 @@
       });
 
       navContainer.appendChild(fragment);
+    },
+
+    renderSidebarTags() {
+      const navContainer = document.getElementById('tagsListNav');
+      if (!navContainer) return;
+      navContainer.innerHTML = '';
+
+      const tagCounts = {};
+      state.tasks.forEach(task => {
+        (task.tags || []).forEach(tag => {
+          if (tag && tag.trim()) {
+            const clean = tag.trim().toLowerCase();
+            tagCounts[clean] = (tagCounts[clean] || 0) + 1;
+          }
+        });
+      });
+
+      const tags = Object.keys(tagCounts).sort();
+      if (tags.length === 0) {
+        navContainer.innerHTML = '<span style="font-size: 0.78rem; color: var(--text-muted); padding: 4px 10px;">No tags added yet</span>';
+        return;
+      }
+
+      const wrap = document.createElement('div');
+      wrap.className = 'tags-cloud-wrap';
+
+      tags.forEach(tag => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `tag-cloud-chip ${state.activeTag === tag ? 'active' : ''}`;
+        btn.innerHTML = `#${escapeHTML(tag)} <span class="tag-cloud-count">${tagCounts[tag]}</span>`;
+        btn.onclick = () => {
+          state.activeTag = (state.activeTag === tag) ? null : tag;
+          AppRenderer.renderSidebarTags();
+          AppRenderer.renderCurrentView();
+        };
+        wrap.appendChild(btn);
+      });
+
+      navContainer.appendChild(wrap);
     },
 
     populateCategoryDropdowns() {
@@ -817,8 +867,16 @@
       if (task.tags && task.tags.length > 0) {
         task.tags.forEach(tag => {
           const tagBadge = document.createElement('span');
-          tagBadge.className = 'task-badge badge-tag';
+          const isTagActive = state.activeTag && state.activeTag.toLowerCase() === tag.toLowerCase();
+          tagBadge.className = `task-badge badge-tag ${isTagActive ? 'active' : ''}`;
           tagBadge.textContent = `#${tag}`;
+          tagBadge.title = `Click to filter by #${tag}`;
+          tagBadge.onclick = (e) => {
+            e.stopPropagation();
+            state.activeTag = isTagActive ? null : tag.toLowerCase();
+            AppRenderer.renderSidebarTags();
+            AppRenderer.renderCurrentView();
+          };
           metaRow.appendChild(tagBadge);
         });
       }
@@ -2291,6 +2349,7 @@
     FocusTimer.init();
     AppRenderer.populateCategoryDropdowns();
     AppRenderer.renderSidebarCategories();
+    AppRenderer.renderSidebarTags();
     AppRenderer.updateSidebarCounts();
     AppRenderer.updateProductivityWidget();
     AppRenderer.renderCurrentView();

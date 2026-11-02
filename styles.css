@@ -978,6 +978,62 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   background: var(--bg-surface-hover);
   color: var(--text-secondary);
   border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.badge-tag:hover {
+  background: var(--bg-surface-active);
+  color: var(--text-primary);
+}
+
+.badge-tag.active {
+  background: var(--accent-primary);
+  color: white;
+  border-color: var(--accent-primary);
+}
+
+/* Tags Cloud Navigation */
+.tags-cloud-container {
+  padding: 4px 8px;
+}
+
+.tags-cloud-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tag-cloud-chip {
+  background: var(--bg-surface-hover);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.tag-cloud-chip:hover {
+  background: var(--bg-surface-active);
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+
+.tag-cloud-chip.active {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: #fff;
+}
+
+.tag-cloud-count {
+  font-size: 0.7rem;
+  opacity: 0.85;
 }
 
 .badge-subtasks {
